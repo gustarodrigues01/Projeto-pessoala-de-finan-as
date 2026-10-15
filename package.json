@@ -1,0 +1,16 @@
+{
+  "name": "familia-prospera",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.mjs"
+  },
+  "engines": {
+    "node": ">=24.18.0"
+  
+  },
+  "dependencies": {
+    "mariadb": "^3.5.2"
+  }
+}
