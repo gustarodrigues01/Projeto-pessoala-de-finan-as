@@ -39,19 +39,24 @@ O servidor verifica a conexão MariaDB antes de abrir o site. Se houver falha, m
 - O app começa sem movimentações ou valores fictícios.
 - O guia de uso aparece no primeiro acesso e pode ser aberto pelo botão “Aprender a usar”.
 
-## Preparar publicação na internet (Railway)
+## Publicar no Vercel com PostgreSQL
 
-Esta configuração mantém o MariaDB e publica o servidor Node. A aplicação aceita `MARIADB_PRIVATE_URL` para conectar ao banco dentro da rede privada da hospedagem. Não coloque o endereço público do banco nem credenciais no código ou no GitHub.
+O site pode ser servido diretamente pelo Vercel. A API foi separada em funções da pasta `api/`, e a versão hospedada usa PostgreSQL pela variável `DATABASE_URL`. O servidor `server.mjs` continua disponível para iniciar a versão local com MariaDB.
 
-1. Confirme que o GitHub recebeu os arquivos do projeto (`server.mjs`, `package.json`, `package-lock.json`, `index.html`, `app.css`, `app.js` e `schema.sql`). O `.env` e `node_modules` não devem ser enviados.
-2. No Railway, crie um projeto e adicione um serviço MariaDB com volume persistente em `/var/lib/mysql`. Mantenha a porta 3306 privada.
-3. Adicione o projeto Node ao mesmo projeto Railway conectando o repositório do GitHub. O comando de início é `npm start`; a versão mínima de Node está definida em `package.json`.
-4. Nas variáveis do serviço Node, configure `HOST=0.0.0.0`, `NODE_ENV=production` e `COOKIE_SECURE=true`.
-5. Configure `MARIADB_PRIVATE_URL` como referência para a URL privada fornecida pelo serviço MariaDB. Não digite nem cole essa credencial em conversas, commits ou arquivos públicos.
-6. Gere um domínio público HTTPS para o serviço Node. Depois do deploy, confira o domínio e o endereço `/health`, que deve responder `{"ok":true}`.
-7. Crie uma conta de teste e confirme cadastro, login e salvamento. As contas e lançamentos do MariaDB local não são copiados automaticamente para o banco hospedado.
+1. No Vercel, importe o repositório do GitHub como um projeto novo.
+2. No Marketplace do Vercel, adicione uma integração PostgreSQL, como Neon. Escolha um plano e região e confirme os termos e custos apresentados pelo provedor.
+3. Confira nas variáveis do projeto Vercel se existe `DATABASE_URL` com a conexão do PostgreSQL. O app cria as tabelas automaticamente no primeiro acesso à API.
+4. Em **Settings → Build and Deployment**, selecione Node.js `24.x`, compatível com a versão local do projeto.
+5. Faça o deploy. A raiz do repositório contém `index.html`, `app.css`, `app.js` e as funções `api/`.
+6. Depois do deploy, abra `/api/health` para confirmar que a função está publicada; ela deve responder `{"ok":true}`. Depois teste cadastro, saída, login e salvamento. A conexão PostgreSQL será confirmada ao usar a API com `DATABASE_URL` configurada.
 
-O serviço MariaDB em Railway exige plano com cobrança e armazenamento persistente. Confira os valores atuais antes de ativar. Faça backup periódico do banco. Este aplicativo ainda é um protótipo: antes de guardar dados financeiros reais de outras pessoas, revise segurança, recuperação de senha, limite de tentativas de login e rotina de backup.
+### Copiar as contas e dados do MariaDB local
+
+Para um banco PostgreSQL novo e vazio, faça primeiro um backup do banco no HeidiSQL. Depois, copie `.env.example` para `.env`, mantenha as variáveis `DB_*` apontando para seu MariaDB local e preencha `PG_DATABASE_URL` com a conexão PostgreSQL privada do provedor. Não envie `.env` ao GitHub nem compartilhe a URL.
+
+No terminal, dentro da pasta do projeto, execute `npm run migrate:postgres`. O script verifica se o destino já tem contas; se houver, cancela para evitar sobrescrever dados. Ele copia contas, sessões e dados salvos, incluindo os hashes das senhas, sem conhecer nem revelar as senhas originais. Faça essa cópia antes de permitir novos lançamentos no app online.
+
+Não use o arquivo `schema.sql` para configurar o PostgreSQL: ele é específico do MariaDB local. O projeto cria as tabelas PostgreSQL automaticamente. Faça backups do destino e use primeiro somente dados de teste; este protótipo ainda precisa de revisão de segurança antes de armazenar informações financeiras reais de outras pessoas.
 
 ## Arquivos principais
 

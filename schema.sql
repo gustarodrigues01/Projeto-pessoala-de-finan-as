@@ -7,7 +7,7 @@ CREATE DATABASE IF NOT EXISTS familia_prospera
 -- Recria somente o usuário do aplicativo; não apaga os dados das tabelas.
 CREATE OR REPLACE USER 'familia_app'@'127.0.0.1'
   IDENTIFIED VIA mysql_native_password
-  USING PASSWORD(@Gusta2008);
+  IDENTIFIED BY 'SUBSTITUA_POR_UMA_SENHA_FORTE';
 
 GRANT ALL PRIVILEGES ON familia_prospera.* TO 'familia_app'@'127.0.0.1';
 
