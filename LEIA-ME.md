@@ -39,6 +39,20 @@ O servidor verifica a conexão MariaDB antes de abrir o site. Se houver falha, m
 - O app começa sem movimentações ou valores fictícios.
 - O guia de uso aparece no primeiro acesso e pode ser aberto pelo botão “Aprender a usar”.
 
+## Preparar publicação na internet (Railway)
+
+Esta configuração mantém o MariaDB e publica o servidor Node. A aplicação aceita `MARIADB_PRIVATE_URL` para conectar ao banco dentro da rede privada da hospedagem. Não coloque o endereço público do banco nem credenciais no código ou no GitHub.
+
+1. Confirme que o GitHub recebeu os arquivos do projeto (`server.mjs`, `package.json`, `package-lock.json`, `index.html`, `app.css`, `app.js` e `schema.sql`). O `.env` e `node_modules` não devem ser enviados.
+2. No Railway, crie um projeto e adicione um serviço MariaDB com volume persistente em `/var/lib/mysql`. Mantenha a porta 3306 privada.
+3. Adicione o projeto Node ao mesmo projeto Railway conectando o repositório do GitHub. O comando de início é `npm start`; a versão mínima de Node está definida em `package.json`.
+4. Nas variáveis do serviço Node, configure `HOST=0.0.0.0`, `NODE_ENV=production` e `COOKIE_SECURE=true`.
+5. Configure `MARIADB_PRIVATE_URL` como referência para a URL privada fornecida pelo serviço MariaDB. Não digite nem cole essa credencial em conversas, commits ou arquivos públicos.
+6. Gere um domínio público HTTPS para o serviço Node. Depois do deploy, confira o domínio e o endereço `/health`, que deve responder `{"ok":true}`.
+7. Crie uma conta de teste e confirme cadastro, login e salvamento. As contas e lançamentos do MariaDB local não são copiados automaticamente para o banco hospedado.
+
+O serviço MariaDB em Railway exige plano com cobrança e armazenamento persistente. Confira os valores atuais antes de ativar. Faça backup periódico do banco. Este aplicativo ainda é um protótipo: antes de guardar dados financeiros reais de outras pessoas, revise segurança, recuperação de senha, limite de tentativas de login e rotina de backup.
+
 ## Arquivos principais
 
 - `server.mjs`: conexão com MariaDB, API, cadastro, login e sessões.

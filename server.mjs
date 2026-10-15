@@ -8,20 +8,32 @@ import { fileURLToPath } from 'node:url';
 
 const scrypt = promisify(scryptCallback);
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const HOST = process.env.HOST || '127.0.0.1';
+// Hospedagens precisam receber conexões externas; o .env local pode sobrescrever para 127.0.0.1.
+const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(process.env.PORT || 3000);
-const DB_HOST = process.env.DB_HOST || '127.0.0.1';
-const DB_PORT = Number(process.env.DB_PORT || 3306);
-const DB_NAME = process.env.DB_NAME || 'familia_prospera';
-const DB_USER = process.env.DB_USER || 'familia_app';
-const DB_PASSWORD = process.env.DB_PASSWORD || '';
+const DB_URL = process.env.DB_URL || process.env.MARIADB_PRIVATE_URL || '';
+let parsedDbUrl = null;
+if (DB_URL) {
+  try {
+    parsedDbUrl = new URL(DB_URL);
+    if (!['mariadb:', 'mysql:'].includes(parsedDbUrl.protocol)) throw new Error('Protocolo inválido.');
+  } catch {
+    console.error('DB_URL/MARIADB_PRIVATE_URL inválida. Use a URL privada fornecida pelo serviço MariaDB.');
+    process.exit(1);
+  }
+}
+const DB_HOST = parsedDbUrl?.hostname || process.env.DB_HOST || '127.0.0.1';
+const DB_PORT = Number(parsedDbUrl?.port || process.env.DB_PORT || 3306);
+const DB_NAME = decodeURIComponent(parsedDbUrl?.pathname.slice(1) || process.env.DB_NAME || 'familia_prospera');
+const DB_USER = decodeURIComponent(parsedDbUrl?.username || process.env.DB_USER || 'familia_app');
+const DB_PASSWORD = decodeURIComponent(parsedDbUrl?.password || process.env.DB_PASSWORD || '');
 const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
 const PASSWORD_BYTES = 64;
 const MAX_BODY = 5 * 1024 * 1024;
 const loginFailures = new Map();
 
 if (!DB_PASSWORD) {
-  console.error('Falta a variável DB_PASSWORD no arquivo .env. Preencha a senha do usuário familia_app.');
+  console.error('Informe DB_PASSWORD ou DB_URL/MARIADB_PRIVATE_URL nas variáveis de ambiente.');
   process.exit(1);
 }
 
@@ -123,12 +135,12 @@ function cookies(req) {
 
 function setSessionCookie(req, res, token) {
   const expires = new Date(Date.now() + SESSION_MS).toUTCString();
-  const secure = req.socket.encrypted ? '; Secure' : '';
+  const secure = process.env.COOKIE_SECURE === 'true' || (process.env.COOKIE_SECURE !== 'false' && (req.socket.encrypted || process.env.NODE_ENV === 'production')) ? '; Secure' : '';
   res.setHeader('Set-Cookie', `cc_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Expires=${expires}; Max-Age=${Math.floor(SESSION_MS / 1000)}${secure}`);
 }
 
 function clearSessionCookie(req, res) {
-  const secure = req.socket.encrypted ? '; Secure' : '';
+  const secure = process.env.COOKIE_SECURE === 'true' || (process.env.COOKIE_SECURE !== 'false' && (req.socket.encrypted || process.env.NODE_ENV === 'production')) ? '; Secure' : '';
   res.setHeader('Set-Cookie', `cc_session=; Path=/; HttpOnly; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0${secure}`);
 }
 
@@ -208,6 +220,8 @@ function requestStatic(res, pathname) {
 const server = createServer(async (req, res) => {
   const pathname = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`).pathname;
   try {
+    if (req.method === 'GET' && pathname === '/health') return json(res, 200, { ok: true });
+
     if (req.method === 'GET' && pathname === '/api/auth/me') {
       const user = await currentUser(req);
       if (!user && cookies(req).cc_session) clearSessionCookie(req, res);
